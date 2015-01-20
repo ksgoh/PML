@@ -1,0 +1,73 @@
+---
+output: html_document
+---
+## Practical Machine Learning Course Project - Assignment Writeup
+  
+### Synopsis
+
+The data for this project comes from http://groupware.les.inf.puc-rio.br/har. Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+The goal of the project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. 
+
+### Data Loading and Preprocessing
+
+The original dataset contains 160 variables. In this assignment, we are only interested in the x, y, z values recorded by the 4 sensors and the "classe" variable.
+
+````{r message=F, warning=F}
+library("caret")
+set.seed(5197)
+
+pmlTraining <- read.csv("pml-training.csv", header=TRUE)
+pmlTesting  <- read.csv("pml-testing.csv",  header=TRUE)
+
+myData <- pmlTraining[,grep ("[xyz]$",names(pmlTraining))]
+myData$classe <- pmlTraining$classe
+
+names (myData)
+````
+
+### Prediction Model
+
+Partition the pml-training dataset into training and validation sets and build a model using Random Forest.
+
+````{r message=F, warning=F}
+inTrain  = createDataPartition(myData$classe, p = 0.60, list=FALSE)
+training = myData[ inTrain,]
+validation  = myData[-inTrain,]
+
+modelFit <- train(classe~., data=training, method = "rf", ntree = 20)
+modelFit$finalModel
+
+prediction <- predict (modelFit, validation)
+confusionMatrix (validation$classe, prediction)
+outOfSampleError <- round(sum(prediction != validation$classe) / length(prediction),3)
+````
+
+It was noted that the model has an out-of-sample error rate of `r outOfSampleError` or `r outOfSampleError * 100`% when tested against the validation set.
+
+### Prediction
+
+The prediction on the testing set achieved 100% accuracy and the values are as follows:
+
+````{r}
+answers <- predict (modelFit, pmlTesting)
+answers
+````
+
+
+
+### Appendix 
+
+Source codes for generating result files for submission of predicted values.
+
+```` {r}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(answers)
+````
